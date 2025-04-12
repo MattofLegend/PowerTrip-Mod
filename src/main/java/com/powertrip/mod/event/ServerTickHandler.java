@@ -3,6 +3,7 @@ package com.powertrip.mod.event;
 import com.powertrip.mod.PowerTripMod;
 import com.powertrip.mod.power.PowerManager;
 import com.powertrip.mod.util.TimeTracker;
+import java.util.ArrayList;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -181,8 +182,8 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
         PowerTripMod.LOGGER.info("Selected player: " + selectedPlayerName + " (will be announced after animation)");
         
         // Trigger roulette display on all clients BEFORE actually granting power
-        PowerTripMod.LOGGER.info("Triggering roulette animation for all players");
-        PowerTripMod.NETWORK.triggerRouletteForAll(server, playerNames, selectedPlayerName);
+        PowerTripMod.LOGGER.info("Triggering beginning roulette animation for all players");
+        PowerTripMod.NETWORK.triggerRouletteForAll(server, playerNames, selectedPlayerName, true); // true = beginning animation
         
         // No chat message needed - animation will be visible on screen
         
@@ -273,6 +274,30 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
         
         PowerTripMod.LOGGER.info("Cycle complete! Current time: " + currentWorldTime + 
                                ", End time: " + cycleEndTime);
+                               
+        // Get the name of the current operator before removing their powers
+        String endingOperator = powerManager.getCurrentPowerPlayer();
+        
+        // Prepare player names for the ending animation
+        List<String> playerNames = new ArrayList<>();
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            playerNames.add(player.getName().getString());
+        }
+        
+        // If we have a valid operator name, trigger ending animation
+        if (endingOperator != null && !endingOperator.isEmpty()) {
+            PowerTripMod.LOGGER.info("Triggering ending roulette animation for player: " + endingOperator);
+            PowerTripMod.NETWORK.triggerRouletteForAll(server, playerNames, endingOperator, false); // false = ending animation
+            
+            // Wait a moment before removing powers to allow animation to play
+            try {
+                Thread.sleep(500); // Brief delay to ensure animation packet is sent first
+            } catch (InterruptedException e) {
+                // Ignore interruption
+            }
+        }
+        
+        // Remove all powers
         powerManager.removeAllPlayerPowers(server);
         
         // Send explicit 'inactive' state update to all clients when cycle ends

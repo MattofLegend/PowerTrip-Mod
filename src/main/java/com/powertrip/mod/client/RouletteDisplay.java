@@ -43,21 +43,30 @@ public class RouletteDisplay {
     private static int currentNameIndex = 0; // Index to track current position in player name list
     private static boolean animationPhaseComplete = false; // Tracks if roulette animation is done
     private static boolean resultPhaseComplete = false; // Tracks if result display is done
+    private static boolean isPowerTripBeginning = true; // Whether this is a beginning (true) or ending (false) animation
     
     /**
      * Starts the roulette animation with the given player names
      * @param players List of player names to include in the roulette
      * @param selected The pre-selected winner (determined server-side)
+     * @param isBeginning Whether this is a beginning (true) or ending (false) animation
      */
-    public static void startRoulette(List<String> players, String selected) {
-        PowerTripMod.LOGGER.info("[ANIMATION DEBUG] Starting roulette animation with " + players.size() + " players, selected: " + selected);
+    public static void startRoulette(List<String> players, String selected, boolean isBeginning) {
+        PowerTripMod.LOGGER.info("[ANIMATION DEBUG] Starting roulette animation with " + players.size() + " players, selected: " + selected + ", isBeginning: " + isBeginning);
         playerNames = players;
         selectedPlayer = selected;
         isClientAnimationActive = true;
         displayResultTicks = 0;
         hasPlayedWinSound = false;
-        animationPhaseComplete = false;
         resultPhaseComplete = false;
+        isPowerTripBeginning = isBeginning;
+        
+        // For ending animations, skip the animation phase and go directly to the result
+        if (!isBeginning) {
+            animationPhaseComplete = true;
+        } else {
+            animationPhaseComplete = false;
+        }
         PowerTripMod.LOGGER.info("[ANIMATION DEBUG] Animation state initialized at " + System.currentTimeMillis());
         
         // Start at a random position in the list for better unpredictability
@@ -216,7 +225,7 @@ public class RouletteDisplay {
             matrices.scale(ModConfig.ROULETTE_TEXT_SCALE, ModConfig.ROULETTE_TEXT_SCALE, 1.0F);
             
             // First draw the "Selecting next operator" heading with pulsing animation
-            Text headerText = Text.literal("Selecting next operator...");
+            Text headerText = Text.literal("Who will reign next?");
             
             // Calculate pulsing animation for the header
             // This varies the color between yellow and gold based on elapsed time
@@ -265,10 +274,17 @@ public class RouletteDisplay {
             }
             // Play the firework sound when the winner is first displayed
             if (!hasPlayedWinSound) {
-                PowerTripMod.LOGGER.info("[ANIMATION DEBUG] Playing winner sounds at tick " + displayResultTicks);
-                // Play the sounds using our helper method
-                playSound(SoundEvents.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 1.0F);
-                playSound(SoundEvents.ENTITY_FIREWORK_ROCKET_TWINKLE, 0.8F);
+                PowerTripMod.LOGGER.info("[ANIMATION DEBUG] Playing sounds at tick " + displayResultTicks);
+                
+                // Different sounds for beginning vs ending
+                if (isPowerTripBeginning) {
+                    // Play celebration sounds for beginning
+                    playSound(SoundEvents.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 1.0F);
+                    playSound(SoundEvents.ENTITY_FIREWORK_ROCKET_TWINKLE, 0.8F);
+                } else {
+                    // Play more somber sounds for ending
+                    playSound(SoundEvents.BLOCK_BELL_USE, 1.0F);
+                }
                 hasPlayedWinSound = true;
                 
                 // Set the result text to show the selected player (which might not match
@@ -290,8 +306,9 @@ public class RouletteDisplay {
                     30,
                     0xA0000000); // Semi-transparent black
             
-            // Draw the "New Operator" text
-            Text headerText = Text.literal("New Operator");
+            // Draw the appropriate header text
+            String headerString = isPowerTripBeginning ? "The reign of" : "The reign of";
+            Text headerText = Text.literal(headerString);
             int headerWidth = textRenderer.getWidth(headerText);
             drawContext.drawText(textRenderer, 
                     headerText, 
@@ -308,6 +325,17 @@ public class RouletteDisplay {
                     -nameWidth / 2, 
                     0, 
                     0xFFD700, // Gold color
+                    true);
+            
+            // Draw ending text based on whether this is beginning or ending
+            String endingText = isPowerTripBeginning ? "has begun!" : "has ended!";
+            Text endText = Text.literal(endingText);
+            int endWidth = textRenderer.getWidth(endText);
+            drawContext.drawText(textRenderer, 
+                    endText, 
+                    -endWidth / 2, 
+                    15, 
+                    0xFFFF55, // Yellow color
                     true);
             
             // Restore matrices

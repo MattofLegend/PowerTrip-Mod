@@ -97,10 +97,11 @@ public class NetworkHandler {
      * @param server The Minecraft server
      * @param playerNames List of player names to include in the roulette
      * @param selectedPlayer The pre-selected player who will win
+     * @param isBeginning Whether this is a beginning (true) or ending (false) animation
      */
-    public void triggerRouletteForAll(MinecraftServer server, List<String> playerNames, String selectedPlayer) {
+    public void triggerRouletteForAll(MinecraftServer server, List<String> playerNames, String selectedPlayer, boolean isBeginning) {
         // Create the custom payload
-        RoulettePayload payload = new RoulettePayload(playerNames, selectedPlayer);
+        RoulettePayload payload = new RoulettePayload(playerNames, selectedPlayer, isBeginning);
         
         // Send to all players
         PowerTripMod.LOGGER.info("[NETWORK DEBUG] Sending roulette payload to all players at " + System.currentTimeMillis());
@@ -139,8 +140,9 @@ public class NetworkHandler {
             PowerTripMod.LOGGER.info("[NETWORK DEBUG] Client received roulette packet at " + System.currentTimeMillis());
             context.client().execute(() -> {
                 PowerTripMod.LOGGER.info("[NETWORK DEBUG] Client executing roulette animation with " + 
-                    payload.playerNames().size() + " players, selected: " + payload.selectedPlayer());
-                RouletteDisplay.startRoulette(payload.playerNames(), payload.selectedPlayer());
+                    payload.playerNames().size() + " players, selected: " + payload.selectedPlayer() + 
+                    ", isBeginning: " + payload.isBeginning());
+                RouletteDisplay.startRoulette(payload.playerNames(), payload.selectedPlayer(), payload.isBeginning());
             });
         });
         
@@ -175,7 +177,7 @@ public class NetworkHandler {
      * Custom payload record for the roulette animation packet
      * Using the modern networking API introduced in 1.20.5
      */
-    public static record RoulettePayload(List<String> playerNames, String selectedPlayer) implements CustomPayload {
+    public static record RoulettePayload(List<String> playerNames, String selectedPlayer, boolean isBeginning) implements CustomPayload {
         // Create an ID for this payload type
         public static final CustomPayload.Id<RoulettePayload> ID = new CustomPayload.Id<>(ROULETTE_PACKET_ID);
         
@@ -194,6 +196,9 @@ public class NetworkHandler {
                 
                 // Write the selected player
                 buf.writeString(payload.selectedPlayer);
+                
+                // Write whether this is a beginning or ending animation
+                buf.writeBoolean(payload.isBeginning);
             }
             
             @Override
@@ -210,7 +215,10 @@ public class NetworkHandler {
                 // Read the selected player
                 String selectedPlayer = buf.readString();
                 
-                return new RoulettePayload(playerNames, selectedPlayer);
+                // Read whether this is a beginning or ending animation
+                boolean isBeginning = buf.readBoolean();
+                
+                return new RoulettePayload(playerNames, selectedPlayer, isBeginning);
             }
         };
         
