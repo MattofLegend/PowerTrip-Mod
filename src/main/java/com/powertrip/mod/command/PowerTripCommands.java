@@ -1,6 +1,7 @@
 package com.powertrip.mod.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.powertrip.mod.PowerTripMod;
 import com.powertrip.mod.power.PowerManager;
@@ -8,6 +9,7 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
 
+import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
 
 /**
@@ -32,6 +34,9 @@ public class PowerTripCommands {
                 )
                 .then(literal("status")
                     .executes(PowerTripCommands::executeStatus)
+                )
+                .then(argument("days", IntegerArgumentType.integer(1))
+                    .executes(PowerTripCommands::executeSetDuration)
                 )
         );
         
@@ -110,5 +115,29 @@ public class PowerTripCommands {
         }
         
         return 1;
+    }
+    
+    /**
+     * Execute the command to set the power cycle duration
+     * @param context Command context
+     * @return Command result
+     */
+    private static int executeSetDuration(CommandContext<ServerCommandSource> context) {
+        ServerCommandSource source = context.getSource();
+        
+        // Get the server's power manager
+        PowerManager powerManager = PowerTripMod.POWER_MANAGER;
+        
+        // Get the days argument from the command
+        int days = IntegerArgumentType.getInteger(context, "days");
+        
+        // Try to set the cycle duration
+        if (powerManager.setCycleDuration(days)) {
+            source.sendFeedback(() -> Text.literal("PowerTrip reign period set to " + days + " days."), true);
+            return 1;
+        } else {
+            source.sendFeedback(() -> Text.literal("A powertrip must not be currently active to change the reign period"), false);
+            return 0;
+        }
     }
 }

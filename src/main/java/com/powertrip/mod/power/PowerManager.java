@@ -25,7 +25,7 @@ public class PowerManager {
     private int daysRemaining = 7;
     private long cycleEndTime = -1; // Absolute world time when cycle ends
     private long cycleDayStart = -1; // The Minecraft day when the cycle started
-    private static final int CYCLE_DURATION = 7; // Default duration of 7 days
+    private static int CYCLE_DURATION = 7; // Default duration of 7 days
     private static final long TICKS_PER_DAY = 24000; // Minecraft day length in ticks
     private boolean justInitialized = false; // Flag to prevent immediate update after init
     
@@ -286,5 +286,20 @@ public class PowerManager {
         // Power cycle stopped
     }
     
-    // setDaysRemaining method is already defined above with better implementation
+    /**
+     * Sets the cycle duration in days
+     * @param days The number of days for a power cycle
+     * @return true if the duration was changed, false if a cycle is currently running
+     */
+    public boolean setCycleDuration(int days) {
+        // Cannot change duration while a cycle is running
+        if (isRunning()) {
+            return false;
+        }
+        
+        // Set the new cycle duration
+        CYCLE_DURATION = days;
+        PowerTripMod.LOGGER.info("PowerTrip cycle duration set to " + days + " days");
+        return true;
+    }
 }
