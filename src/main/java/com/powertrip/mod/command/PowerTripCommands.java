@@ -68,7 +68,7 @@ public class PowerTripCommands {
         
         // Start the power cycle
         powerManager.startCycle(source.getServer());
-        source.sendFeedback(() -> Text.literal("PowerTrip cycle started! A new operator will be chosen in 7 days."), true);
+        // Success message removed as requested
         
         return 1;
     }

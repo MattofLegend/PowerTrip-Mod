@@ -113,14 +113,14 @@ public class PowerManager {
         isRunning = true;
         
         // Notify the selected player
-        player.sendMessage(Text.literal("You have been selected as the operator for the next 7 days!")
+        player.sendMessage(Text.literal("You have been selected as the operator for the next " + CYCLE_DURATION + " days!")
                 .formatted(Formatting.GOLD), false);
         
         // Notify all other players
         for (ServerPlayerEntity otherPlayer : server.getPlayerManager().getPlayerList()) {
             if (otherPlayer != player) {
                 otherPlayer.sendMessage(Text.literal(playerName + 
-                        " has been selected as the operator for the next 7 days!")
+                        " has been selected as the operator for the next " + CYCLE_DURATION + " days!")
                         .formatted(Formatting.GOLD), false);
             }
         }
@@ -149,8 +149,7 @@ public class PowerManager {
                     player.getPitch(),
                     true); // Cancel vehicle dismount
             
-            player.sendMessage(Text.literal("A new power cycle begins! All players have been teleported to spawn.")
-                    .formatted(Formatting.AQUA), false);
+            // Message removed as requested
         }
     }
     
