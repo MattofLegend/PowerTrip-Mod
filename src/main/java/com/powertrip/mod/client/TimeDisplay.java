@@ -34,9 +34,10 @@ public class TimeDisplay {
      * Updates the time values from server data
      */
     public static void updateTimeRemaining(int days, int hours, int minutes, boolean isActive) {
-        daysRemaining = days;
-        hoursRemaining = hours;
-        minutesRemaining = minutes;
+        // Ensure no negative values can be set
+        daysRemaining = Math.max(0, days);
+        hoursRemaining = Math.max(0, hours);
+        minutesRemaining = Math.max(0, minutes);
         isPowerTripActive = isActive;
     }
     

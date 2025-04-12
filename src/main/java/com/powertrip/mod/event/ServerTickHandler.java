@@ -63,6 +63,15 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
         // Get current absolute world time
         long currentWorldTime = server.getOverworld().getTimeOfDay();
         
+        // Check EVERY tick if the cycle should end based on absolute time
+        // This ensures cycle ends exactly when it should rather than waiting for TIME_CHECK_INTERVAL
+        if (powerManager.isRunning()) {
+            long cycleEndTime = powerManager.getCycleEndTime();
+            if (currentWorldTime >= cycleEndTime) {
+                handleCycleEnd(server);
+            }
+        }
+        
         // Get current absolute world time to decide update frequency
         long ticksRemaining = powerManager.getCycleEndTime() - currentWorldTime;
         double hoursRaw = (ticksRemaining * 24.0) / 24000.0;
@@ -236,22 +245,11 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
     private void checkPowerCycleStatus(MinecraftServer server, long currentWorldTime) {
         // Only check if we have an active power cycle and we're actively running
         if (powerManager.getCurrentPowerPlayer() != null && powerManager.isRunning()) {
-            // Get the absolute world time when the cycle will end
-            long cycleEndTime = powerManager.getCycleEndTime();
-            
             // Update days remaining based on current world time
             powerManager.updateDaysRemaining(currentWorldTime);
             
-            // Check if cycle should end based on world time
-            if (currentWorldTime >= cycleEndTime) {
-                PowerTripMod.LOGGER.info("Cycle complete! Current time: " + currentWorldTime + 
-                                       ", End time: " + cycleEndTime);
-                powerManager.removeAllPlayerPowers(server);
-                
-                // Send explicit 'inactive' state update to all clients when cycle ends
-                PowerTripMod.LOGGER.info("Sending inactive state to all clients");
-                PowerTripMod.NETWORK.sendTimeRemainingToAll(server, 0, 0, 0, false);
-            }
+            // Note: The cycle end check is now done every tick in onEndTick
+            // so it's removed from here to avoid duplication
         }
         
         // Check if we should start a new cycle
@@ -262,6 +260,24 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
                 startPowerCycle(server);
             }
         }
+    }
+    
+    /**
+     * Handles the end of a power cycle
+     * @param server The Minecraft server
+     */
+    private void handleCycleEnd(MinecraftServer server) {
+        // Get the absolute world time when the cycle will end
+        long cycleEndTime = powerManager.getCycleEndTime();
+        long currentWorldTime = server.getOverworld().getTimeOfDay();
+        
+        PowerTripMod.LOGGER.info("Cycle complete! Current time: " + currentWorldTime + 
+                               ", End time: " + cycleEndTime);
+        powerManager.removeAllPlayerPowers(server);
+        
+        // Send explicit 'inactive' state update to all clients when cycle ends
+        PowerTripMod.LOGGER.info("Sending inactive state to all clients");
+        PowerTripMod.NETWORK.sendTimeRemainingToAll(server, 0, 0, 0, false);
     }
     
     /**
@@ -283,6 +299,13 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
             PowerTripMod.LOGGER.info("[TIME DEBUG] Ticks remaining: " + ticksRemaining);
             PowerTripMod.LOGGER.info("[TIME DEBUG] Days remaining (raw): " + (ticksRemaining / 24000.0));
             
+            // If time has run out, set all time values to 0 and mark as inactive
+            if (ticksRemaining <= 0) {
+                PowerTripMod.LOGGER.info("[TIME DEBUG] Time has run out, setting all values to 0");
+                PowerTripMod.NETWORK.sendTimeRemainingToAll(server, 0, 0, 0, false);
+                return;
+            }
+            
             powerManager.updateDaysRemaining(currentWorldTime);
             
             int daysRemaining = powerManager.getDaysRemaining();
@@ -301,6 +324,8 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
                     hoursRemaining = 0;
                     // Calculate minutes from ticks - one hour is 1000 ticks (24000/24)
                     minutesRemaining = (int)Math.ceil((ticksRemaining * 60.0) / 1000.0);
+                    // Ensure minutes don't go negative
+                    minutesRemaining = Math.max(0, minutesRemaining);
                     PowerTripMod.LOGGER.info("[TIME DEBUG] Less than 1 hour remains, showing " + minutesRemaining + " minutes");
                 } else {
                     // Otherwise, round up to the next hour
@@ -317,6 +342,8 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
             if (daysRemaining == 0 && hoursRemaining == 0) {
                 // Calculate minutes from ticks if hours is 0
                 minutesValue = (int)Math.ceil((ticksRemaining * 60.0) / 1000.0);
+                // Ensure minutes don't go negative
+                minutesValue = Math.max(0, minutesValue);
                 PowerTripMod.LOGGER.info("[TIME DEBUG] Final values - Days: " + daysRemaining + ", Hours: " + hoursRemaining + ", Minutes: " + minutesValue);
             } else {
                 PowerTripMod.LOGGER.info("[TIME DEBUG] Final values - Days: " + daysRemaining + ", Hours: " + hoursRemaining);
