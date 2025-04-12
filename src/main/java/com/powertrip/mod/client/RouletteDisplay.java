@@ -52,6 +52,16 @@ public class RouletteDisplay {
      * @param isBeginning Whether this is a beginning (true) or ending (false) animation
      */
     public static void startRoulette(List<String> players, String selected, boolean isBeginning) {
+        // If we already have an active animation, force it to complete first
+        if (isClientAnimationActive) {
+            PowerTripMod.LOGGER.info("[ANIMATION DEBUG] Forcing completion of previous animation before starting new one");
+            // Force cleanup of the previous animation state
+            isClientAnimationActive = false;
+            resultPhaseComplete = true;
+            displayResultTicks = ModConfig.RESULT_DISPLAY_DURATION;
+        }
+        
+        // Now start the new animation with clean state
         PowerTripMod.LOGGER.info("[ANIMATION DEBUG] Starting roulette animation with " + players.size() + " players, selected: " + selected + ", isBeginning: " + isBeginning);
         playerNames = players;
         selectedPlayer = selected;
@@ -264,9 +274,16 @@ public class RouletteDisplay {
             
             // Restore matrices
             matrices.pop();
-        } 
-        // Render the result after animation duration completes and until result display is done
-        else if (displayResultTicks < ModConfig.RESULT_DISPLAY_DURATION && !resultPhaseComplete) {
+        }
+        else {
+            // Automatically set animation phase as complete when animation time expires
+            if (!animationPhaseComplete) {
+                PowerTripMod.LOGGER.info("[ANIMATION DEBUG] Animation duration complete, transitioning to result phase");
+                animationPhaseComplete = true;
+            }
+            
+            // Render the result after animation phase completes and until result display is done
+            if (displayResultTicks < ModConfig.RESULT_DISPLAY_DURATION && !resultPhaseComplete) {
             // Mark animation phase as complete when we enter result phase
             if (!animationPhaseComplete) {
                 PowerTripMod.LOGGER.info("[ANIMATION DEBUG] Entering result display phase at tick " + displayResultTicks + ", time: " + System.currentTimeMillis());
@@ -343,7 +360,11 @@ public class RouletteDisplay {
             
             // We no longer increment ticks here - it's done in the tickClientAnimation method
             // Just render the current state
-        } else if (resultPhaseComplete) {
+            }
+        } 
+        
+        // Animation has ended naturally
+        if (resultPhaseComplete) {
             // Animation has ended naturally through the tick callback
             isClientAnimationActive = false;
         }

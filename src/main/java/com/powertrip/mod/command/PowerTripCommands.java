@@ -1,6 +1,7 @@
 package com.powertrip.mod.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.powertrip.mod.PowerTripMod;
@@ -37,6 +38,11 @@ public class PowerTripCommands {
                 )
                 .then(argument("days", IntegerArgumentType.integer(1))
                     .executes(PowerTripCommands::executeSetDuration)
+                )
+                .then(literal("autostart")
+                    .then(argument("enabled", BoolArgumentType.bool())
+                        .executes(PowerTripCommands::executeAutostart)
+                    )
                 )
         );
         
@@ -139,5 +145,26 @@ public class PowerTripCommands {
             source.sendFeedback(() -> Text.literal("A powertrip must not be currently active to change the reign period"), false);
             return 0;
         }
+    }
+    
+    /**
+     * Execute the autostart command
+     * @param context Command context
+     * @return Command result
+     */
+    private static int executeAutostart(CommandContext<ServerCommandSource> context) {
+        ServerCommandSource source = context.getSource();
+        boolean enabled = BoolArgumentType.getBool(context, "enabled");
+        
+        // Get the server's power manager
+        PowerManager powerManager = PowerTripMod.POWER_MANAGER;
+        
+        // Set the autostart setting
+        powerManager.setAutostartEnabled(enabled);
+        
+        // Send feedback to the user
+        source.sendFeedback(() -> Text.literal("PowerTrip autostart " + 
+                                         (enabled ? "enabled" : "disabled")), true);
+        return 1;
     }
 }

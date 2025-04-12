@@ -21,7 +21,12 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
     private final TimeTracker timeTracker;
     private final PowerManager powerManager;
     private boolean isRouletteActive = false;
+    private boolean pendingAutostart = false; // NEW FLAG: Track if we're pending autostart after ending animation
     private int dailyReminderCounter = 0;
+    
+    // Timer for autostart delay after end animation
+    private int autostartDelayTimer = 0;
+    private static final int AUTOSTART_DELAY = 100; // 5 seconds (100 ticks)
     
     // Tick counter for periodic time updates
     private int tickCounter = 0;
@@ -104,6 +109,26 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
         // Skip further checks if no players are online
         if (server.getCurrentPlayerCount() == 0) {
             return;
+        }
+        
+        // Check if we're waiting to autostart after END animation completes
+        if (pendingAutostart) {
+            // Increment the timer
+            autostartDelayTimer++;
+            
+            // Once we've waited long enough, start the new cycle
+            if (autostartDelayTimer >= AUTOSTART_DELAY) {
+                PowerTripMod.LOGGER.info("END ANIMATION COMPLETE - Now auto-starting new PowerTrip cycle after waiting for animation");
+                
+                // Reset the flags
+                pendingAutostart = false;
+                autostartDelayTimer = 0;
+                
+                // Start a new cycle but ONLY if we're not already in one
+                if (!isRouletteActive && !powerManager.isRunning()) {
+                    startPowerCycle(server);
+                }
+            }
         }
         
         // Check if a manual power cycle was requested
@@ -203,6 +228,10 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
                     // Now grant power to the selected player
                     powerManager.grantPowerToPlayer(server, selectedPlayer, selectedPlayerName);
                     PowerTripMod.LOGGER.info("=== POWER CYCLE COMPLETE ===");
+                    // Reset the roulette active flag to allow future cycles to start properly
+                    isRouletteActive = false;
+                    PowerTripMod.LOGGER.info("Roulette animation flag reset to inactive");
+                    
                     // Server state is now managed independently of client animation
                 });
             } catch (InterruptedException e) {
@@ -303,6 +332,13 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
         // Send explicit 'inactive' state update to all clients when cycle ends
         PowerTripMod.LOGGER.info("Sending inactive state to all clients");
         PowerTripMod.NETWORK.sendTimeRemainingToAll(server, 0, 0, 0, false);
+        
+        // Set the flag to indicate we need to start a new cycle after END animation is done
+        // But ONLY if autostart is enabled
+        if (powerManager.isAutostartEnabled()) {
+            PowerTripMod.LOGGER.info("Marking cycle for autostart when END ANIMATION completes");
+            pendingAutostart = true;
+        }
     }
     
     /**

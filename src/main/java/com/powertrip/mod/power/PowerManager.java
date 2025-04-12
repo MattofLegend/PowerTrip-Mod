@@ -26,8 +26,10 @@ public class PowerManager {
     private long cycleEndTime = -1; // Absolute world time when cycle ends
     private long cycleDayStart = -1; // The Minecraft day when the cycle started
     private static int CYCLE_DURATION = 7; // Default duration of 7 days
+    private boolean autostartEnabled = false; // Whether to automatically start a new cycle when the current one ends
     private static final long TICKS_PER_DAY = 24000; // Minecraft day length in ticks
     private boolean justInitialized = false; // Flag to prevent immediate update after init
+    private boolean isPowerGrantPending = false; // Flag to prevent multiple overlapping power grants
     
     /**
      * Starts a new power cycle
@@ -71,8 +73,17 @@ public class PowerManager {
      * @param server The Minecraft server instance
      * @param player The player to grant operator status to
      * @param playerName The name of the player (used to update current power player)
+     * @return boolean Whether the power was successfully granted
      */
-    public void grantPowerToPlayer(MinecraftServer server, ServerPlayerEntity player, String playerName) {
+    public boolean grantPowerToPlayer(MinecraftServer server, ServerPlayerEntity player, String playerName) {
+        // Check if a power grant is already pending
+        if (isPowerGrantPending) {
+            PowerTripMod.LOGGER.warn("Power grant already in progress, ignoring request for: " + playerName);
+            return false;
+        }
+        
+        // Set power grant in progress flag
+        isPowerGrantPending = true;
         PowerTripMod.LOGGER.info("Granting operator status to " + playerName);
         PowerTripMod.LOGGER.info("[SERVER DEBUG] About to grant operator status at time: " + System.currentTimeMillis());
         
@@ -113,6 +124,10 @@ public class PowerManager {
                         .formatted(Formatting.GOLD), false);
             }
         }
+        
+        // Reset the power grant pending flag
+        isPowerGrantPending = false;
+        return true;
     }
     
     /**
@@ -301,5 +316,30 @@ public class PowerManager {
         CYCLE_DURATION = days;
         PowerTripMod.LOGGER.info("PowerTrip cycle duration set to " + days + " days");
         return true;
+    }
+    
+    /**
+     * Gets whether autostart is enabled
+     * @return true if autostart is enabled, false otherwise
+     */
+    public boolean isAutostartEnabled() {
+        return autostartEnabled;
+    }
+    
+    /**
+     * Sets whether autostart is enabled
+     * @param enabled true to enable autostart, false to disable
+     */
+    public void setAutostartEnabled(boolean enabled) {
+        this.autostartEnabled = enabled;
+        PowerTripMod.LOGGER.info("PowerTrip autostart " + (enabled ? "enabled" : "disabled"));
+    }
+    
+    /**
+     * Checks if a power grant operation is currently in progress
+     * @return true if a power grant is pending, false otherwise
+     */
+    public boolean isPowerGrantPending() {
+        return isPowerGrantPending;
     }
 }
