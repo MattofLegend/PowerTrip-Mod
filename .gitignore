@@ -1,0 +1,47 @@
+# Gradle
+.gradle/
+build/
+out/
+classes/
+
+# Eclipse
+bin/
+*.launch
+.settings/
+.metadata/
+.classpath
+.project
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# VS Code
+.vscode/
+.code-workspace
+
+# Minecraft
+run/
+
+# Fabric / Forge
+logs/
+remappedSrc/
+*.DS_Store
+*.log
+
+# Java
+hs_err_*.log
+replay_*.log
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Exceptions
+!gradle/wrapper/gradle-wrapper.jar

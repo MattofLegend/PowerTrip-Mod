@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "powertrip",
+  "version": "${version}",
+  "name": "PowerTrip",
+  "description": "Every 7 days, a player is randomly selected to become the server operator",
+  "authors": [
+    "You"
+  ],
+  "contact": {
+    "homepage": "https://github.com/yourusername/powertrip",
+    "sources": "https://github.com/yourusername/powertrip"
+  },
+  "license": "MIT",
+  "icon": "assets/powertrip/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.powertrip.mod.PowerTripMod"
+    ],
+    "client": [
+      "com.powertrip.mod.client.PowerTripModClient"
+    ]
+  },
+  "mixins": [
+    "powertrip.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "fabric-api": "*",
+    "minecraft": "~1.21.4",
+    "java": ">=17"
+  }
+}
