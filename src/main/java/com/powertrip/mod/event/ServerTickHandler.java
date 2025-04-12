@@ -25,6 +25,7 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
     // Tick counter for periodic time updates
     private int tickCounter = 0;
     private static final int TIME_UPDATE_INTERVAL = 100; // Send time update every 5 seconds (100 ticks)
+    private static final int MINUTE_UPDATE_INTERVAL = 20; // More frequent updates when minutes are shown (1 second)
     
     // Absolute time tracking
     private long lastCheckedWorldTime = 0;
@@ -62,9 +63,20 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
         // Get current absolute world time
         long currentWorldTime = server.getOverworld().getTimeOfDay();
         
+        // Get current absolute world time to decide update frequency
+        long ticksRemaining = powerManager.getCycleEndTime() - currentWorldTime;
+        double hoursRaw = (ticksRemaining * 24.0) / 24000.0;
+        
         // Periodically send time updates to all clients
-        if (tickCounter % TIME_UPDATE_INTERVAL == 0) {
-            sendTimeUpdateToAll(server);
+        // Use more frequent updates when less than 1 hour remains
+        if (hoursRaw < 1.0 && powerManager.isRunning()) {
+            if (tickCounter % MINUTE_UPDATE_INTERVAL == 0) {
+                sendTimeUpdateToAll(server);
+            }
+        } else {
+            if (tickCounter % TIME_UPDATE_INTERVAL == 0) {
+                sendTimeUpdateToAll(server);
+            }
         }
         
         // Check for time jumps and day changes every TIME_CHECK_INTERVAL ticks
@@ -100,9 +112,14 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
             long currentDay = timeTracker.getCurrentDay(server);
             boolean dayChanged = powerManager.updateDaysRemaining(currentDay, server);
             
-            // If days remaining is 0, a new cycle will trigger automatically
-            if (powerManager.getDaysRemaining() == 0 && !isRouletteActive) {
-                PowerTripMod.LOGGER.info("Power cycle completed, starting new cycle");
+            // Check the actual time rather than just days
+            // Get the current world time and cycle end time
+            currentWorldTime = server.getOverworld().getTimeOfDay(); // Using existing variable
+            long cycleEndTime = powerManager.getCycleEndTime();
+            
+            // Only end the cycle when actual time runs out, not when days reach 0
+            if (currentWorldTime >= cycleEndTime && !isRouletteActive) {
+                PowerTripMod.LOGGER.info("Power cycle completed (actual time), starting new cycle");
                 startPowerCycle(server);
             }
             
@@ -233,7 +250,7 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
                 
                 // Send explicit 'inactive' state update to all clients when cycle ends
                 PowerTripMod.LOGGER.info("Sending inactive state to all clients");
-                PowerTripMod.NETWORK.sendTimeRemainingToAll(server, 0, 0, false);
+                PowerTripMod.NETWORK.sendTimeRemainingToAll(server, 0, 0, 0, false);
             }
         }
         
@@ -258,26 +275,55 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
         if (isActive) {
             // Update days remaining based on current time
             long currentWorldTime = server.getOverworld().getTimeOfDay();
+            long cycleEndTime = powerManager.getCycleEndTime();
+            long ticksRemaining = cycleEndTime - currentWorldTime;
+            
+            PowerTripMod.LOGGER.info("[TIME DEBUG] Current world time: " + currentWorldTime);
+            PowerTripMod.LOGGER.info("[TIME DEBUG] Cycle end time: " + cycleEndTime);
+            PowerTripMod.LOGGER.info("[TIME DEBUG] Ticks remaining: " + ticksRemaining);
+            PowerTripMod.LOGGER.info("[TIME DEBUG] Days remaining (raw): " + (ticksRemaining / 24000.0));
+            
             powerManager.updateDaysRemaining(currentWorldTime);
             
             int daysRemaining = powerManager.getDaysRemaining();
+            PowerTripMod.LOGGER.info("[TIME DEBUG] Days remaining (after PowerManager): " + daysRemaining);
             
             // Calculate hours remaining if less than 1 day
             int hoursRemaining = 0;
             if (daysRemaining < 1) {
                 // Calculate hours remaining based on actual ticks remaining
-                long ticksRemaining = powerManager.getCycleEndTime() - currentWorldTime;
-                // Convert directly to hours (24000 ticks = 24 hours)
-                hoursRemaining = (int) Math.ceil((ticksRemaining * 24) / 24000.0);
-                // Ensure at least 1 hour is shown if time is remaining but less than an hour
-                hoursRemaining = Math.max(1, hoursRemaining);
+                double hoursRaw = (ticksRemaining * 24.0) / 24000.0;
+                PowerTripMod.LOGGER.info("[TIME DEBUG] Raw hours calculated: " + hoursRaw);
+                
+                // If less than 1 hour remains, set hours to 0 and calculate minutes
+                int minutesRemaining = 0;
+                if (hoursRaw < 1.0) {
+                    hoursRemaining = 0;
+                    // Calculate minutes from ticks - one hour is 1000 ticks (24000/24)
+                    minutesRemaining = (int)Math.ceil((ticksRemaining * 60.0) / 1000.0);
+                    PowerTripMod.LOGGER.info("[TIME DEBUG] Less than 1 hour remains, showing " + minutesRemaining + " minutes");
+                } else {
+                    // Otherwise, round up to the next hour
+                    hoursRemaining = (int) Math.ceil(hoursRaw);
+                    PowerTripMod.LOGGER.info("[TIME DEBUG] Hours calculated for < 1 day: " + hoursRemaining + " (from ticks: " + ticksRemaining + ")");
+                }
             } else if (daysRemaining == 1) {
                 // If exactly 1 day left, show 24 hours instead of 0
                 hoursRemaining = 24;
+                PowerTripMod.LOGGER.info("[TIME DEBUG] Setting hours to 24 for exactly 1 day remaining");
+            }
+            
+            int minutesValue = 0;
+            if (daysRemaining == 0 && hoursRemaining == 0) {
+                // Calculate minutes from ticks if hours is 0
+                minutesValue = (int)Math.ceil((ticksRemaining * 60.0) / 1000.0);
+                PowerTripMod.LOGGER.info("[TIME DEBUG] Final values - Days: " + daysRemaining + ", Hours: " + hoursRemaining + ", Minutes: " + minutesValue);
+            } else {
+                PowerTripMod.LOGGER.info("[TIME DEBUG] Final values - Days: " + daysRemaining + ", Hours: " + hoursRemaining);
             }
             
             // Send the time update to all clients
-            PowerTripMod.NETWORK.sendTimeRemainingToAll(server, daysRemaining, hoursRemaining, isActive);
+            PowerTripMod.NETWORK.sendTimeRemainingToAll(server, daysRemaining, hoursRemaining, minutesValue, isActive);
         }
     }
     

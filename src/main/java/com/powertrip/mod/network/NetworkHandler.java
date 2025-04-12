@@ -47,6 +47,7 @@ public class NetworkHandler {
                 boolean isActive = false;
                 int daysRemaining = 0;
                 int hoursRemaining = 0;
+                int minutesRemaining = 0;
                 
                 if (PowerTripMod.SERVER_TICK_HANDLER != null) {
                     var powerManager = PowerTripMod.SERVER_TICK_HANDLER.getPowerManager();
@@ -59,7 +60,19 @@ public class NetworkHandler {
                         if (daysRemaining < 1) {
                             long currentWorldTime = context.server().getOverworld().getTimeOfDay();
                             long ticksRemaining = powerManager.getCycleEndTime() - currentWorldTime;
-                            hoursRemaining = (int) Math.max(1, (ticksRemaining * 24) / 24000);
+                            
+                            // Calculate hours in the same way as ServerTickHandler
+                            double hoursRaw = (ticksRemaining * 24.0) / 24000.0;
+                            
+                            // If less than 1 hour remains, set hours to 0 and calculate minutes
+                            if (hoursRaw < 1.0) {
+                                hoursRemaining = 0;
+                                // Calculate minutes from ticks - one Minecraft hour is 1000 ticks
+                                minutesRemaining = (int)Math.ceil((ticksRemaining * 60.0) / 1000.0);
+                            } else {
+                                // Otherwise, round up to the next hour
+                                hoursRemaining = (int) Math.ceil(hoursRaw);
+                            }
                         }
                     }
                 }
@@ -68,8 +81,8 @@ public class NetworkHandler {
                                         ", days=" + daysRemaining + 
                                         ", hours=" + hoursRemaining);
                 
-                // Create response payload
-                TimeRemainingPayload response = new TimeRemainingPayload(daysRemaining, hoursRemaining, isActive);
+                // Create response payload (with minutes)
+                TimeRemainingPayload response = new TimeRemainingPayload(daysRemaining, hoursRemaining, minutesRemaining, isActive);
                 
                 // Send response back to the client
                 ServerPlayNetworking.send(context.player(), response);
@@ -105,9 +118,9 @@ public class NetworkHandler {
      * @param hoursRemaining Hours remaining in the current day (if days < 1)
      * @param isActive Whether PowerTrip is active (operator exists)
      */
-    public void sendTimeRemainingToAll(MinecraftServer server, int daysRemaining, int hoursRemaining, boolean isActive) {
+    public void sendTimeRemainingToAll(MinecraftServer server, int daysRemaining, int hoursRemaining, int minutesRemaining, boolean isActive) {
         // Create the custom payload
-        TimeRemainingPayload payload = new TimeRemainingPayload(daysRemaining, hoursRemaining, isActive);
+        TimeRemainingPayload payload = new TimeRemainingPayload(daysRemaining, hoursRemaining, minutesRemaining, isActive);
         
         // Send to all players
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
@@ -135,8 +148,8 @@ public class NetworkHandler {
         ClientPlayNetworking.registerGlobalReceiver(TimeRemainingPayload.ID, (payload, context) -> {
             context.client().execute(() -> {
                 PowerTripMod.LOGGER.debug("Received time remaining update: " + 
-                    payload.daysRemaining() + " days, " + payload.hoursRemaining() + " hours, active: " + 
-                    payload.isPowerTripActive());
+                    payload.daysRemaining() + " days, " + payload.hoursRemaining() + " hours, " +
+                    payload.minutesRemaining() + " minutes, active: " + payload.isPowerTripActive());
                 
                 // Call the TimeDisplay class safely through reflection to avoid direct class reference
                 // This prevents class loading issues between client/server environments
@@ -146,11 +159,11 @@ public class NetworkHandler {
                     
                     // Get the updateTimeRemaining method
                     java.lang.reflect.Method updateMethod = timeDisplayClass.getMethod(
-                        "updateTimeRemaining", int.class, int.class, boolean.class);
+                        "updateTimeRemaining", int.class, int.class, int.class, boolean.class);
                     
                     // Call the method with our payload data
                     updateMethod.invoke(null, payload.daysRemaining(), 
-                        payload.hoursRemaining(), payload.isPowerTripActive());
+                        payload.hoursRemaining(), payload.minutesRemaining(), payload.isPowerTripActive());
                 } catch (Exception e) {
                     PowerTripMod.LOGGER.error("Failed to update time display", e);
                 }

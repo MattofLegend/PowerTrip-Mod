@@ -177,16 +177,21 @@ public class PowerManager {
             }
             
             long ticksRemaining = cycleEndTime - currentWorldTime;
-            int days = (int)Math.max(0, ticksRemaining / TICKS_PER_DAY);
+            int exactDays = (int)(ticksRemaining / TICKS_PER_DAY);
             int remainingTicks = (int)(ticksRemaining % TICKS_PER_DAY);
             
-            // If we have a partial day, count it as one more day unless it's very small
-            if (remainingTicks > 1000) { // More than 1000 ticks (about 1 minute) remaining
-                days += 1;
+            PowerTripMod.LOGGER.info("[PM DEBUG] Calculating days - ticksRemaining: " + ticksRemaining + 
+                                  ", exactDays: " + exactDays + ", remainingTicks: " + remainingTicks);
+            
+            // Keep rounding logic EXCEPT when it would round up to exactly 1 day
+            if (remainingTicks > 1000 && exactDays > 0) { // More than 1000 ticks remaining AND not on last day
+                PowerTripMod.LOGGER.info("[PM DEBUG] Rounding up days from " + exactDays + " to " + (exactDays + 1));
+                exactDays += 1;
             }
             
-            this.daysRemaining = days;
-            PowerTripMod.LOGGER.debug("Updated days remaining to " + days + 
+            PowerTripMod.LOGGER.info("[PM DEBUG] Final days value: " + exactDays);
+            this.daysRemaining = exactDays;
+            PowerTripMod.LOGGER.debug("Updated days remaining to " + exactDays + 
                                   " (ticks remaining: " + ticksRemaining + ")");
         }
     }
@@ -235,8 +240,9 @@ public class PowerManager {
         
         // Handle cycle completion
         if (daysRemaining <= 0) {
-            // Start a new cycle
-            startNewCycle(server);
+            // Don't immediately end the cycle when days reach 0
+            // Instead, let the ServerTickHandler handle it based on actual time
+            // startNewCycle(server); <- This line was removed to allow hours/minutes display
         }
         
         return dayChanged;
@@ -275,7 +281,7 @@ public class PowerManager {
         
         // Send explicit 'inactive' state update to all clients
         PowerTripMod.LOGGER.info("Sending inactive state to all clients from stopCycle");
-        PowerTripMod.NETWORK.sendTimeRemainingToAll(server, 0, 0, false);
+        PowerTripMod.NETWORK.sendTimeRemainingToAll(server, 0, 0, 0, false);
         
         // Power cycle stopped
     }

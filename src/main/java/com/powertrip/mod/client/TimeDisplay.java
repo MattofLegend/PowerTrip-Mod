@@ -17,6 +17,7 @@ public class TimeDisplay {
     // State for time display
     private static int daysRemaining = 0;
     private static int hoursRemaining = 0;
+    private static int minutesRemaining = 0;
     private static boolean isPowerTripActive = false;
     
     /**
@@ -32,9 +33,11 @@ public class TimeDisplay {
     /**
      * Updates the time values from server data
      */
-    public static void updateTimeRemaining(int days, int hours, boolean isActive) {
+    public static void updateTimeRemaining(int days, int hours, int minutes, boolean isActive) {
+        PowerTripMod.LOGGER.info("[DISPLAY DEBUG] Updating time display - Days: " + days + ", Hours: " + hours + ", Minutes: " + minutes + ", Active: " + isActive);
         daysRemaining = days;
         hoursRemaining = hours;
+        minutesRemaining = minutes;
         isPowerTripActive = isActive;
     }
     
@@ -56,17 +59,21 @@ public class TimeDisplay {
         }
         
         // Format the time text based on days/hours/minutes remaining
+        PowerTripMod.LOGGER.info("[DISPLAY DEBUG] Rendering time - Days: " + daysRemaining + ", Hours: " + hoursRemaining);
+        
         String timeText;
         if (daysRemaining > 0) {
             // Just show days
             timeText = daysRemaining + " day" + (daysRemaining > 1 ? "s" : "");
+            PowerTripMod.LOGGER.info("[DISPLAY DEBUG] Showing days: " + timeText);
         } else if (hoursRemaining > 0) {
             // Just show hours
             timeText = hoursRemaining + " hour" + (hoursRemaining > 1 ? "s" : "");
+            PowerTripMod.LOGGER.info("[DISPLAY DEBUG] Showing hours: " + timeText);
         } else {
-            // Calculate minutes from hour fraction
-            int minutesRemaining = (int)Math.max(1, (hoursRemaining * 60));
+            // Use the minutes value received from the server
             timeText = minutesRemaining + " minute" + (minutesRemaining > 1 ? "s" : "");
+            PowerTripMod.LOGGER.info("[DISPLAY DEBUG] Showing minutes: " + timeText);
         }
         
         // Get screen dimensions

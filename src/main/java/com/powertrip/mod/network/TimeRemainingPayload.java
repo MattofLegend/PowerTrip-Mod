@@ -10,7 +10,7 @@ import net.minecraft.util.Identifier;
  * Custom payload for time remaining information
  * Using the modern networking API for Minecraft 1.21.4
  */
-public record TimeRemainingPayload(int daysRemaining, int hoursRemaining, boolean isPowerTripActive) implements CustomPayload {
+public record TimeRemainingPayload(int daysRemaining, int hoursRemaining, int minutesRemaining, boolean isPowerTripActive) implements CustomPayload {
     // Create an ID for this payload type
     public static final CustomPayload.Id<TimeRemainingPayload> ID = new CustomPayload.Id<>(
             Identifier.of(PowerTripMod.MOD_ID, "time_remaining"));
@@ -21,6 +21,7 @@ public record TimeRemainingPayload(int daysRemaining, int hoursRemaining, boolea
         public void encode(PacketByteBuf buf, TimeRemainingPayload payload) {
             buf.writeInt(payload.daysRemaining);
             buf.writeInt(payload.hoursRemaining);
+            buf.writeInt(payload.minutesRemaining);
             buf.writeBoolean(payload.isPowerTripActive);
         }
         
@@ -28,8 +29,9 @@ public record TimeRemainingPayload(int daysRemaining, int hoursRemaining, boolea
         public TimeRemainingPayload decode(PacketByteBuf buf) {
             int days = buf.readInt();
             int hours = buf.readInt();
+            int minutes = buf.readInt();
             boolean isActive = buf.readBoolean();
-            return new TimeRemainingPayload(days, hours, isActive);
+            return new TimeRemainingPayload(days, hours, minutes, isActive);
         }
     };
     
