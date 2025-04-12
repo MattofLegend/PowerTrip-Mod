@@ -46,8 +46,7 @@ public class PowerManager {
         // Remove operator status
         removeAllPlayerPowers(server);
         
-        // Teleport everyone to spawn
-        teleportAllPlayersToSpawn(server);
+        // Teleportation to spawn feature removed as requested
         
         // The rest of the cycle (roulette and granting power) is now handled by ServerTickHandler
     }
@@ -134,23 +133,15 @@ public class PowerManager {
      * Teleports all players to the world spawn point
      * @param server The Minecraft server instance
      */
+    /**
+     * Teleports all players to the world spawn point
+     * @param server The Minecraft server instance
+     * @deprecated This method is no longer used as the teleportation feature has been removed
+     */
     public void teleportAllPlayersToSpawn(MinecraftServer server) {
-        PowerTripMod.LOGGER.info("Teleporting all players to spawn");
-        BlockPos spawnPos = server.getOverworld().getSpawnPos();
-        
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            // Use the proper teleport method signature for 1.21.4
-            player.teleport(server.getOverworld(), 
-                    spawnPos.getX() + 0.5, 
-                    spawnPos.getY(), 
-                    spawnPos.getZ() + 0.5, 
-                    Set.of(), // No position flags
-                    player.getYaw(), 
-                    player.getPitch(),
-                    true); // Cancel vehicle dismount
-            
-            // Message removed as requested
-        }
+        // Teleportation feature has been removed as requested
+        PowerTripMod.LOGGER.info("Player teleportation feature is disabled");
+        // Method kept for backwards compatibility
     }
     
     /**

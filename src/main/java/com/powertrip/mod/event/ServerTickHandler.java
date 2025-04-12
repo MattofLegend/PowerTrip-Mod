@@ -195,9 +195,8 @@ public class ServerTickHandler implements ServerTickEvents.EndTick {
         PowerTripMod.LOGGER.info("Removing operator status from all players");
         powerManager.removeAllPlayerPowers(server);
         
-        // Teleport all players to spawn
-        PowerTripMod.LOGGER.info("Teleporting all players to spawn");
-        powerManager.teleportAllPlayersToSpawn(server);
+        // Teleportation to spawn feature removed as requested
+        PowerTripMod.LOGGER.info("Player teleportation disabled");
         
         // Select a player but don't grant power yet
         Random random = new Random();
