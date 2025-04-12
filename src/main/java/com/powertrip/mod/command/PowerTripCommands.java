@@ -92,7 +92,7 @@ public class PowerTripCommands {
         
         // Stop the power cycle
         powerManager.stopCycle(source.getServer());
-        source.sendFeedback(() -> Text.literal("PowerTrip cycle stopped! All players have been de-opped."), true);
+        source.sendFeedback(() -> Text.literal("PowerTrip cycle stopped! All players have been de-opped."), false);
         
         return 1;
     }
@@ -139,7 +139,7 @@ public class PowerTripCommands {
         
         // Try to set the cycle duration
         if (powerManager.setCycleDuration(days)) {
-            source.sendFeedback(() -> Text.literal("PowerTrip reign period set to " + days + " days."), true);
+            source.sendFeedback(() -> Text.literal("PowerTrip reign period set to " + days + " days."), false);
             return 1;
         } else {
             source.sendFeedback(() -> Text.literal("A powertrip must not be currently active to change the reign period"), false);
@@ -164,7 +164,7 @@ public class PowerTripCommands {
         
         // Send feedback to the user
         source.sendFeedback(() -> Text.literal("PowerTrip autostart " + 
-                                         (enabled ? "enabled" : "disabled")), true);
+                                         (enabled ? "enabled" : "disabled")), false);
         return 1;
     }
 }
